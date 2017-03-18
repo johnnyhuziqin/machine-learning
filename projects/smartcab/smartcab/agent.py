@@ -28,7 +28,7 @@ class LearningAgent(Agent):
         self.previous_act = None
         self.previous_r = 0
         self.trial_cnt = 0
-        self.gamma = 0.1
+        self.gamma = 0
 
     
     def reset(self, destination=None, testing=False):
@@ -56,6 +56,8 @@ class LearningAgent(Agent):
         a = 0.97
         #self.epsilon = a**t 
         self.epsilon = 1 - a**((1000-t)/10) 
+        #self.epsilon -= 0.001
+        #self.epsilon = a**(t/10)
         print "the counter is:",t   
 
         if testing == True:
@@ -111,8 +113,7 @@ class LearningAgent(Agent):
         if self.learning:
             self.Q.setdefault(state, {action: 0.0  for action in self.valid_actions})
         print "the Q size:",len(self.Q)
-        return    
-
+        
 
     def choose_action(self, state):
         """ The choose_action function is called when the agent is asked to choose
@@ -136,7 +137,14 @@ class LearningAgent(Agent):
             action = self.valid_actions[k]
         else:
             if  random.random() < self.epsilon :
-                action = random.choice(self.valid_actions)      
+                prior_list = []  #hu: want to priorly explore those action whose have not yet been done
+                for k in self.Q[state]:
+                    if self.Q[state][k] == 0:
+                        prior_list.append(k)
+                if len(prior_list) > 0:
+                    action = random.choice(prior_list)
+                else:              
+                    action = random.choice(self.valid_actions)      
             else:
                 
                 actions = self.Q[state]
@@ -177,8 +185,9 @@ class LearningAgent(Agent):
             #print "learning %r,%r"%(self.previous_st[0],self.previous_act)
               
             #self.Q[self.previous_st][self.previous_act] = self.previous_r + self.alpha*(self.get_maxQ(state)) #+ bias
-            self.Q[self.previous_st][self.previous_act] = (1 - self.alpha)*self.Q[self.previous_st][self.previous_act] \
-            + self.alpha*(self.previous_r + self.gamma*self.get_maxQ(state))
+            #self.Q[self.previous_st][self.previous_act] = (1 - self.alpha)*self.Q[self.previous_st][self.previous_act] \
+            #+ self.alpha*(self.previous_r + self.gamma*self.get_maxQ(state))
+            self.Q[state][action] = self.Q[state][action] + self.alpha * (reward - self.Q[state][action])
         #    print "we learn prev st:%r prev act:%r r:%r st:%r maxQ:%r"%(self.previous_st,self.previous_act,reward,state,self.get_maxQ(state))
         
         
@@ -220,7 +229,7 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent,learning = True,epsilon = 1,alpha = 0.3)
+    agent = env.create_agent(LearningAgent,learning = True,epsilon = 1,alpha = 0.6)
     
     ##############
     # Follow the driving agent
@@ -242,7 +251,7 @@ def run():
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05 
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(tolerance = 0.02,n_test = 30)
+    sim.run(tolerance = 0.01,n_test = 30)
 
 
 if __name__ == '__main__':
